@@ -1,6 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 function Navbar() {
+  const token = localStorage.getItem("token");
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    localStorage.removeItem("token");
+    navigate("/"); // go home after logout
+    window.location.reload(); // force refresh navbar
+  }
+
   return (
     <nav className="navbar">
       <Link to="/" className="nav-left">
@@ -11,11 +20,21 @@ function Navbar() {
         <Link to="/">Home</Link>
         <Link to="/search">Rental Search</Link>
         <Link to="/about">About</Link>
+
+        {token && <Link to="/rated">Rated Rentals</Link>}
       </div>
 
       <div className="nav-right">
-        <Link to="/login">Login</Link>
-        <Link to="/register">Register</Link>
+        {token ? (
+          <Link to="/" onClick={handleLogout}>
+            Logout
+          </Link>
+        ) : (
+          <>
+            <Link to="/login">Login</Link>
+            <Link to="/register">Register</Link>
+          </>
+        )}
       </div>
     </nav>
   );

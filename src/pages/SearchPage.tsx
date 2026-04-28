@@ -47,6 +47,13 @@ function SearchPage() {
 
   const [page, setPage] = useState(1);
 
+  // const { id } = useParams();
+  const token = localStorage.getItem("token");
+
+ const [userRatings, setUserRatings] = useState<Record<number, number>>({});
+
+ const [ratedMessage, setRatedMessage] = useState<Record<number, boolean>>({});
+
   useEffect(() => {
     fetch("http://4.237.58.241:3000/rentals/states")
       .then((res) => res.json())
@@ -88,6 +95,14 @@ function SearchPage() {
 
     fetchRentals();
   }, [page, postcode, selectedState, selectedPropertyType]);
+
+  // Auto sctroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, [page]);
 
   const displayedRentals = rentals
     .filter((rental) => {
@@ -140,6 +155,41 @@ function SearchPage() {
     setSortBy("");
     setSelectedRental(null);
     setPage(1);
+  }
+
+  async function submitRating(rentalId: number) {
+    const selectedRating = userRatings[rentalId];
+
+    if (!token || !selectedRating) {
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `http://4.237.58.241:3000/ratings/rentals/${rentalId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            rating: selectedRating,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to submit rating");
+      }
+      
+      setRatedMessage({
+        ...ratedMessage,
+        [rentalId]: true,
+      });
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   return (
@@ -238,6 +288,64 @@ function SearchPage() {
               <p><strong>Parking:</strong> {rental.parkingSpaces}</p>
               <p><strong>Rent:</strong> ${rental.rent}</p>
             </Link>
+
+            <div
+                style={{
+                  marginTop: "20px",
+                  textAlign: "center",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Link to={`/rentals/${rental.id}`}>
+                  <button>View</button>
+                </Link>
+
+                <div style={{ marginTop: "10px" }}>
+                  {ratedMessage[rental.id] ? (
+                    <p>Thank you for rating!</p>
+                  ) : userRatings[rental.id] !== undefined ? (
+                    <>
+                      <div style={{ fontSize: "28px", cursor: "pointer" }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            onClick={() =>
+                              setUserRatings({
+                                ...userRatings,
+                                [rental.id]: star,
+                              })
+                            }
+                            style={{
+                              color:
+                                star <= (userRatings[rental.id] || 0)
+                                  ? "#f5b301"
+                                  : "#ccc",
+                            }}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+
+                      <button onClick={() => submitRating(rental.id)}>Submit</button>
+                    </>
+                  ) : (
+                    token && (
+                      <button
+                        onClick={() =>
+                          setUserRatings({
+                            ...userRatings,
+                            [rental.id]: 0,
+                          })
+                        }
+                      >
+                        Rate
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
           </div>
         ))}
       </div>
@@ -260,6 +368,7 @@ function SearchPage() {
             ))
           )}
         </div>
+        
       )}
 
       <div className="pagination">
