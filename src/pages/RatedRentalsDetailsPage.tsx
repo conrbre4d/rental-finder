@@ -55,11 +55,9 @@ function RentalDetailsPage() {
           `http://4.237.58.241:3000/rentals/search?postcode=${data.postcode}`
         );
       })
-      .then((res) => res?.json())
+      .then((res) => res.json())
       .then((data) => {
-        if (!data) return;
-
-        const rentalsData = data.data || data;
+        const rentalsData = data.rentals || data.data || data.results || data;
 
         const validNearby = rentalsData.filter(
           (item: NearbyRental) =>
@@ -97,10 +95,17 @@ function RentalDetailsPage() {
   }, [id, token]);
 
   async function submitRating() {
-    if (!token || !id || selectedRating === 0) {
+    if (!token || !id) {
+      setRatingMessage("Please log in first.");
+      return;
+    }
+
+    if (selectedRating === 0) {
       setRatingMessage("Please select a rating first.");
       return;
     }
+
+    const hadExistingRating = rating !== null;
 
     try {
       const res = await fetch(
@@ -126,10 +131,12 @@ function RentalDetailsPage() {
       setRating(data);
       setSelectedRating(data.rating);
       setShowRating(false);
-      setRatingMessage("Review submitted!");
+      setRatingMessage(
+        hadExistingRating ? "Rating has been changed!" : "Thank you for rating!"
+      );
     } catch (error) {
       console.error(error);
-      setRatingMessage("Failed to submit review.");
+      setRatingMessage("Failed to submit rating.");
     }
   }
 
@@ -149,6 +156,81 @@ function RentalDetailsPage() {
   return (
     <section className="details-page">
       <h1>{rental.title}</h1>
+
+      {token && (
+        <div className="rating-box">
+          <h2 style={{ color: "#122248" }}>Your Rating:</h2>
+
+          {ratingMessage && (
+            <p style={{ textAlign: "center" }}>
+                {ratingMessage}
+            </p>
+            )}
+
+          {rating && !showRating && (
+            <div className="rating-center">
+              <div className="rating-star-row">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    style={{
+                      color: star <= rating.rating ? "#f5b301" : "#ccc",
+                    }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+
+              <button
+                className="btn-filled"
+                onClick={() => {
+                  setShowRating(true);
+                  setRatingMessage("Please select a new rating.");
+                }}
+              >
+                Update Rating
+              </button>
+            </div>
+          )}
+
+          {showRating && (
+            <div className="rating-center">
+              <div className="rating-star-row">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    onClick={() => setSelectedRating(star)}
+                    style={{
+                      color: star <= selectedRating ? "#f5b301" : "#ccc",
+                    }}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+
+              <button className="btn-filled" onClick={submitRating}>
+                Submit Rating
+              </button>
+            </div>
+          )}
+
+          {!rating && !showRating && (
+            <div className="rating-center">
+              <button
+                className="btn-filled"
+                onClick={() => {
+                  setShowRating(true);
+                  setRatingMessage("You can now add a rating");
+                }}
+              >
+                Rate this property
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="details-map">
         <Map
@@ -188,72 +270,35 @@ function RentalDetailsPage() {
         <strong>Address:</strong> {rental.streetAddress}, {rental.suburb},{" "}
         {rental.state} {rental.postcode}
       </p>
-      <p><strong>Property Type:</strong> {rental.propertyType}</p>
-      <p><strong>Bedrooms:</strong> {rental.bedrooms}</p>
-      <p><strong>Bathrooms:</strong> {rental.bathrooms}</p>
-      <p><strong>Parking:</strong> {rental.parkingSpaces}</p>
-      <p><strong>Rent:</strong> ${rental.rent}</p>
 
-      {token && (
-        <div className="rating-box">
-          <h3>Your Rating</h3>
+      <p>
+        <strong>Property Type:</strong> {rental.propertyType}
+      </p>
 
-          {rating && (
-            <p>
-              <span className="rating-stars">
-                {"★".repeat(rating.rating)}
-                {"☆".repeat(5 - rating.rating)}
-              </span>{" "}
-              {rating.rating}/5
-            </p>
-          )}
+      <p>
+        <strong>Bedrooms:</strong> {rental.bedrooms}
+      </p>
 
-          {!showRating && (
-            <button onClick={() => setShowRating(true)}>
-              {rating ? "Update Rating" : "Rate this property"}
-            </button>
-          )}
+      <p>
+        <strong>Bathrooms:</strong> {rental.bathrooms}
+      </p>
 
-          {showRating && (
-            <div>
-              <p>Select rating:</p>
+      <p>
+        <strong>Parking:</strong> {rental.parkingSpaces}
+      </p>
 
-              {[1, 2, 3, 4, 5].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setSelectedRating(num)}
-                  className={
-                    selectedRating >= num
-                      ? "star-button selected"
-                      : "star-button"
-                  }
-                >
-                  ★
-                </button>
-              ))}
-
-              <div>
-                <button onClick={submitRating}>Submit Review</button>
-              </div>
-            </div>
-          )}
-
-          {ratingMessage && <p>{ratingMessage}</p>}
-        </div>
-      )}
-
-      {!token && (
-        <p className="login-rating-message">
-          Log in to rate this property.
-        </p>
-      )}
+      <p>
+        <strong>Rent:</strong> ${rental.rent}
+      </p>
 
       <div className="details-description">
-        <strong>Description:</strong>
-        {rental.description.split("<br/>").map((line, index) => (
-          <p key={index}>{line}</p>
-        ))}
-      </div>
+        <h2>Description</h2>
+        <p
+            dangerouslySetInnerHTML={{
+            __html: rental.description,
+            }}
+        />
+        </div>
     </section>
   );
 }

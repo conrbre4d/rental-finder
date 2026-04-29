@@ -47,12 +47,29 @@ function SearchPage() {
 
   const [page, setPage] = useState(1);
 
-  // const { id } = useParams();
   const token = localStorage.getItem("token");
 
- const [userRatings, setUserRatings] = useState<Record<number, number>>({});
+  const [userRatings, setUserRatings] = useState<Record<number, number>>({});
+  const [ratedMessage, setRatedMessage] = useState<Record<number, boolean>>({});
 
- const [ratedMessage, setRatedMessage] = useState<Record<number, boolean>>({});
+  function resetPage() {
+    setPage(1);
+    setSelectedRental(null);
+  }
+
+  function resetFilters() {
+    setPostcode("");
+    setSelectedState("");
+    setSelectedPropertyType("");
+    setMinRent("");
+    setMaxRent("");
+    setMinBedrooms("");
+    setMinBathrooms("");
+    setMinParking("");
+    setSortBy("");
+    setSelectedRental(null);
+    setPage(1);
+  }
 
   useEffect(() => {
     fetch("http://4.237.58.241:3000/rentals/states")
@@ -76,6 +93,27 @@ function SearchPage() {
         params.append("propertyTypes", selectedPropertyType);
       }
 
+      if (minRent) params.append("minimumRent", minRent);
+      if (maxRent) params.append("maximumRent", maxRent);
+      if (minBedrooms) params.append("minimumBedrooms", minBedrooms);
+      if (minBathrooms) params.append("minimumBathrooms", minBathrooms);
+      if (minParking) params.append("minimumParking", minParking);
+
+      if (sortBy === "rent-low") {
+        params.append("sortBy", "rent");
+        params.append("sortOrder", "asc");
+      }
+
+      if (sortBy === "rent-high") {
+        params.append("sortBy", "rent");
+        params.append("sortOrder", "desc");
+      }
+
+      if (sortBy === "title") {
+        params.append("sortBy", "title");
+        params.append("sortOrder", "asc");
+      }
+
       const res = await fetch(
         `http://4.237.58.241:3000/rentals/search?${params.toString()}`
       );
@@ -85,6 +123,7 @@ function SearchPage() {
       if (data.error) {
         console.log(data.message);
         setRentals([]);
+        setPagination(null);
         return;
       }
 
@@ -94,9 +133,19 @@ function SearchPage() {
     }
 
     fetchRentals();
-  }, [page, postcode, selectedState, selectedPropertyType]);
+  }, [
+    page,
+    postcode,
+    selectedState,
+    selectedPropertyType,
+    minRent,
+    maxRent,
+    minBedrooms,
+    minBathrooms,
+    minParking,
+    sortBy,
+  ]);
 
-  // Auto sctroll to top when page changes
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -104,31 +153,7 @@ function SearchPage() {
     });
   }, [page]);
 
-  const displayedRentals = rentals
-    .filter((rental) => {
-      const matchesMinRent = minRent === "" || rental.rent >= Number(minRent);
-      const matchesMaxRent = maxRent === "" || rental.rent <= Number(maxRent);
-      const matchesBedrooms =
-        minBedrooms === "" || rental.bedrooms >= Number(minBedrooms);
-      const matchesBathrooms =
-        minBathrooms === "" || rental.bathrooms >= Number(minBathrooms);
-      const matchesParking =
-        minParking === "" || rental.parkingSpaces >= Number(minParking);
-
-      return (
-        matchesMinRent &&
-        matchesMaxRent &&
-        matchesBedrooms &&
-        matchesBathrooms &&
-        matchesParking
-      );
-    })
-    .sort((a, b) => {
-      if (sortBy === "rent-low") return a.rent - b.rent;
-      if (sortBy === "rent-high") return b.rent - a.rent;
-      if (sortBy === "title") return a.title.localeCompare(b.title);
-      return 0;
-    });
+  const displayedRentals = rentals;
 
   const nearbyRentals = selectedRental
     ? rentals.filter(
@@ -138,29 +163,16 @@ function SearchPage() {
       )
     : [];
 
-  function resetPage() {
-    setPage(1);
-    setSelectedRental(null);
-  }
-
-  function resetFilters() {
-    setPostcode("");
-    setSelectedState("");
-    setSelectedPropertyType("");
-    setMinRent("");
-    setMaxRent("");
-    setMinBedrooms("");
-    setMinBathrooms("");
-    setMinParking("");
-    setSortBy("");
-    setSelectedRental(null);
-    setPage(1);
-  }
-
   async function submitRating(rentalId: number) {
     const selectedRating = userRatings[rentalId];
 
-    if (!token || !selectedRating) {
+    if (!token) {
+      alert("Please log in first.");
+      return;
+    }
+
+    if (selectedRating === undefined || selectedRating === 0) {
+      alert("Please select a rating first.");
       return;
     }
 
@@ -179,16 +191,21 @@ function SearchPage() {
         }
       );
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Failed to submit rating");
+        console.log(data);
+        alert(data.message || "Failed to submit rating.");
+        return;
       }
-      
-      setRatedMessage({
-        ...ratedMessage,
+
+      setRatedMessage((prev) => ({
+        ...prev,
         [rentalId]: true,
-      });
+      }));
     } catch (err) {
       console.error(err);
+      alert("Failed to submit rating.");
     }
   }
 
@@ -249,13 +266,68 @@ function SearchPage() {
 
       {showAdvanced && (
         <div className="advanced-search-panel">
-          <input type="number" min="0" placeholder="Min rent" value={minRent} onChange={(e) => setMinRent(e.target.value)} />
-          <input type="number" min="0" placeholder="Max rent" value={maxRent} onChange={(e) => setMaxRent(e.target.value)} />
-          <input type="number" min="0" placeholder="Min bedrooms" value={minBedrooms} onChange={(e) => setMinBedrooms(e.target.value)} />
-          <input type="number" min="0" placeholder="Min bathrooms" value={minBathrooms} onChange={(e) => setMinBathrooms(e.target.value)} />
-          <input type="number" min="0" placeholder="Min parking" value={minParking} onChange={(e) => setMinParking(e.target.value)} />
+          <input
+            type="number"
+            min="0"
+            placeholder="Min rent"
+            value={minRent}
+            onChange={(e) => {
+              setMinRent(e.target.value);
+              resetPage();
+            }}
+          />
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <input
+            type="number"
+            min="0"
+            placeholder="Max rent"
+            value={maxRent}
+            onChange={(e) => {
+              setMaxRent(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Min bedrooms"
+            value={minBedrooms}
+            onChange={(e) => {
+              setMinBedrooms(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Min bathrooms"
+            value={minBathrooms}
+            onChange={(e) => {
+              setMinBathrooms(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Min parking"
+            value={minParking}
+            onChange={(e) => {
+              setMinParking(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              resetPage();
+            }}
+          >
             <option value="">Sort by</option>
             <option value="rent-low">Rent: Low to High</option>
             <option value="rent-high">Rent: High to Low</option>
@@ -270,7 +342,8 @@ function SearchPage() {
 
       <p className="results-count">
         Showing {pagination ? pagination.from + 1 : 0}–
-        {pagination ? pagination.to : 0} of {pagination ? pagination.total : 0} results
+        {pagination ? pagination.to : 0} of{" "}
+        {pagination ? pagination.total : 0} results
       </p>
 
       <div className="rental-list">
@@ -282,38 +355,57 @@ function SearchPage() {
           >
             <Link to={`/rentals/${rental.id}`} className="rental-link">
               <h3>{rental.title}</h3>
-              <p><strong>Location:</strong> {rental.suburb}, {rental.state} {rental.postcode}</p>
-              <p><strong>Bedrooms:</strong> {rental.bedrooms}</p>
-              <p><strong>Bathrooms:</strong> {rental.bathrooms}</p>
-              <p><strong>Parking:</strong> {rental.parkingSpaces}</p>
-              <p><strong>Rent:</strong> ${rental.rent}</p>
+              <p>
+                <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
+                {rental.postcode}
+              </p>
+              <p>
+                <strong>Bedrooms:</strong> {rental.bedrooms}
+              </p>
+              <p>
+                <strong>Bathrooms:</strong> {rental.bathrooms}
+              </p>
+              <p>
+                <strong>Parking:</strong> {rental.parkingSpaces}
+              </p>
+              <p>
+                <strong>Rent:</strong> ${rental.rent}
+              </p>
             </Link>
 
             <div
-                style={{
-                  marginTop: "20px",
-                  textAlign: "center",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Link to={`/rentals/${rental.id}`}>
-                  <button>View</button>
-                </Link>
+              style={{
+                marginTop: "20px",
+                textAlign: "center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Link to={`/rentals/${rental.id}`}>
+                <button className="btn-outline">View</button>
+              </Link>
 
-                <div style={{ marginTop: "10px" }}>
-                  {ratedMessage[rental.id] ? (
-                    <p>Thank you for rating!</p>
-                  ) : userRatings[rental.id] !== undefined ? (
-                    <>
+              <div style={{ marginTop: "10px" }}>
+                {ratedMessage[rental.id] ? (
+                  <p>Thank you for rating!</p>
+                ) : userRatings[rental.id] !== undefined ? (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "10px",
+                      }}
+                    >
                       <div style={{ fontSize: "28px", cursor: "pointer" }}>
                         {[1, 2, 3, 4, 5].map((star) => (
                           <span
                             key={star}
                             onClick={() =>
-                              setUserRatings({
-                                ...userRatings,
+                              setUserRatings((prev) => ({
+                                ...prev,
                                 [rental.id]: star,
-                              })
+                              }))
                             }
                             style={{
                               color:
@@ -327,25 +419,32 @@ function SearchPage() {
                         ))}
                       </div>
 
-                      <button onClick={() => submitRating(rental.id)}>Submit</button>
-                    </>
-                  ) : (
-                    token && (
                       <button
-                        onClick={() =>
-                          setUserRatings({
-                            ...userRatings,
-                            [rental.id]: 0,
-                          })
-                        }
+                        className="btn-filled"
+                        onClick={() => submitRating(rental.id)}
                       >
-                        Rate
+                        Submit
                       </button>
-                    )
-                  )}
-                </div>
-              </div>
+                    </div>
 
+                  </>
+                ) : (
+                  token && (
+                    <button
+                      className="btn-filled"
+                      onClick={() =>
+                        setUserRatings({
+                          ...userRatings,
+                          [rental.id]: 0,
+                        })
+                      }
+                    >
+                      Rate
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -358,21 +457,32 @@ function SearchPage() {
             <p>No nearby rentals with the same postcode on this page.</p>
           ) : (
             nearbyRentals.slice(0, 5).map((rental) => (
-              <Link to={`/rentals/${rental.id}`} key={rental.id} className="rental-link">
+              <Link
+                to={`/rentals/${rental.id}`}
+                key={rental.id}
+                className="rental-link"
+              >
                 <div className="rental-card">
                   <h3>{rental.title}</h3>
-                  <p><strong>Location:</strong> {rental.suburb}, {rental.state} {rental.postcode}</p>
-                  <p><strong>Rent:</strong> ${rental.rent}</p>
+                  <p>
+                    <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
+                    {rental.postcode}
+                  </p>
+                  <p>
+                    <strong>Rent:</strong> ${rental.rent}
+                  </p>
                 </div>
               </Link>
             ))
           )}
         </div>
-        
       )}
 
       <div className="pagination">
-        <button disabled={!pagination?.prevPage} onClick={() => setPage(page - 1)}>
+        <button
+          disabled={!pagination?.prevPage}
+          onClick={() => setPage(page - 1)}
+        >
           Previous
         </button>
 
@@ -380,7 +490,10 @@ function SearchPage() {
           Page {pagination?.currentPage || page} of {pagination?.lastPage || 1}
         </span>
 
-        <button disabled={!pagination?.nextPage} onClick={() => setPage(page + 1)}>
+        <button
+          disabled={!pagination?.nextPage}
+          onClick={() => setPage(page + 1)}
+        >
           Next
         </button>
       </div>

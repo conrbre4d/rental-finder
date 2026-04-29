@@ -43,19 +43,20 @@ function RatedRentalsPage() {
         setLoading(true);
         setMessage("");
 
-        const ratingsRes = await fetch("http://4.237.58.241:3000/ratings?page=1", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const ratingsRes = await fetch(
+          "http://4.237.58.241:3000/ratings?page=1",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         if (!ratingsRes.ok) {
           throw new Error("Failed to fetch ratings");
         }
 
         const ratingsData = await ratingsRes.json();
-        console.log("Ratings response:", ratingsData);
-
         const ratings: Rating[] = ratingsData.data;
 
         if (!ratings || ratings.length === 0) {
@@ -74,13 +75,12 @@ function RatedRentalsPage() {
             }
 
             const rentalData = await rentalRes.json();
-            console.log("Rental response:", rentalData);
 
             const rental: Rental =
-            rentalData.data?.rental ||
-            rentalData.rental ||
-            rentalData.data ||
-            rentalData;
+              rentalData.data?.rental ||
+              rentalData.rental ||
+              rentalData.data ||
+              rentalData;
 
             return {
               rating,
@@ -106,9 +106,7 @@ function RatedRentalsPage() {
       <h1>Rated Rentals</h1>
 
       {!token && <p>Please log in to view your rated rentals.</p>}
-
       {loading && token && <p>Loading rated rentals...</p>}
-
       {message && <p>{message}</p>}
 
       {!loading && token && ratedRentals.length === 0 && !message && (
@@ -125,9 +123,20 @@ function RatedRentalsPage() {
             <div className="rental-card">
               <h3>{item.rental.title}</h3>
 
-              <p>
-                <strong>Your Rating:</strong> {item.rating.rating} stars
-              </p>
+              {/* ⭐ Stars (left aligned now) */}
+              <div
+                style={{
+                  fontSize: "20px",
+                  color: "#f5b301",
+                  marginBottom: "6px",
+                }}
+              >
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span key={star}>
+                    {star <= item.rating.rating ? "★" : "☆"}
+                  </span>
+                ))}
+              </div>
 
               <p>
                 <strong>Date Rated:</strong>{" "}
