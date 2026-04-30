@@ -25,18 +25,30 @@ type Pagination = {
   nextPage: number | null;
 };
 
+
+/**
+ * Cleans rental titles by removing unwanted "?" characters from the API.
+ * This fixes encoding/display issues in the UI.
+ *
+ * @param title - The original rental title from the API
+ * @returns The cleaned title without unwanted characters
+ */
+function cleanTitle(title: string) {
+  return title.replace(/\?\s*/g, "");
+}
+
+/**
+ * Displays rental listings with filters, pagination, nearby rental previews, and rating actions.
+ */
 function SearchPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [states, setStates] = useState<string[]>([]);
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
-
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
-
   const [postcode, setPostcode] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
-
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [minRent, setMinRent] = useState("");
   const [maxRent, setMaxRent] = useState("");
@@ -44,19 +56,22 @@ function SearchPage() {
   const [minBathrooms, setMinBathrooms] = useState("");
   const [minParking, setMinParking] = useState("");
   const [sortBy, setSortBy] = useState("");
-
   const [page, setPage] = useState(1);
-
   const token = localStorage.getItem("token");
-
   const [userRatings, setUserRatings] = useState<Record<number, number>>({});
   const [ratedMessage, setRatedMessage] = useState<Record<number, boolean>>({});
 
+  /**
+   * Resets pagination to the first page when a search filter changes.
+   */
   function resetPage() {
     setPage(1);
     setSelectedRental(null);
   }
 
+  /**
+   * Clears all search filters and returns the rental list to the first page.
+   */
   function resetFilters() {
     setPostcode("");
     setSelectedState("");
@@ -82,6 +97,10 @@ function SearchPage() {
   }, []);
 
   useEffect(() => {
+
+    /**
+     * Fetches rentals from the API using the selected filters, sorting option, and page number.
+     */
     async function fetchRentals() {
       const params = new URLSearchParams();
 
@@ -89,35 +108,17 @@ function SearchPage() {
 
       if (postcode) params.append("postcode", postcode);
       if (selectedState) params.append("state", selectedState);
-      if (selectedPropertyType) {
-        params.append("propertyTypes", selectedPropertyType);
-      }
-
+      if (selectedPropertyType) {params.append("propertyTypes", selectedPropertyType);}
       if (minRent) params.append("minimumRent", minRent);
       if (maxRent) params.append("maximumRent", maxRent);
       if (minBedrooms) params.append("minimumBedrooms", minBedrooms);
       if (minBathrooms) params.append("minimumBathrooms", minBathrooms);
       if (minParking) params.append("minimumParking", minParking);
+      if (sortBy === "rent-low") {params.append("sortBy", "rent"); params.append("sortOrder", "asc");}
+      if (sortBy === "rent-high") {params.append("sortBy", "rent"); params.append("sortOrder", "desc");}
+      if (sortBy === "title") {params.append("sortBy", "title"); params.append("sortOrder", "asc");}
 
-      if (sortBy === "rent-low") {
-        params.append("sortBy", "rent");
-        params.append("sortOrder", "asc");
-      }
-
-      if (sortBy === "rent-high") {
-        params.append("sortBy", "rent");
-        params.append("sortOrder", "desc");
-      }
-
-      if (sortBy === "title") {
-        params.append("sortBy", "title");
-        params.append("sortOrder", "asc");
-      }
-
-      const res = await fetch(
-        `http://4.237.58.241:3000/rentals/search?${params.toString()}`
-      );
-
+      const res = await fetch(`http://4.237.58.241:3000/rentals/search?${params.toString()}`);
       const data = await res.json();
 
       if (data.error) {
@@ -160,6 +161,10 @@ function SearchPage() {
       )
     : [];
 
+  /**
+   * Submits the selected rating for a rental property.
+   * @param rentalId - The ID of the rental being rated.
+   */
   async function submitRating(rentalId: number) {
     const selectedRating = userRatings[rentalId];
 
@@ -354,7 +359,7 @@ function SearchPage() {
             onClick={() => setSelectedRental(rental)}
           >
             <Link to={`/rentals/${rental.id}`} className="rental-link">
-              <h3>{rental.title}</h3>
+              <h3>{cleanTitle(rental.title)}</h3>
               <p>
                 <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
                 {rental.postcode}
@@ -463,7 +468,7 @@ function SearchPage() {
                 className="rental-link"
               >
                 <div className="rental-card">
-                  <h3>{rental.title}</h3>
+                  <h3>{cleanTitle(rental.title)}</h3>
                   <p>
                     <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
                     {rental.postcode}

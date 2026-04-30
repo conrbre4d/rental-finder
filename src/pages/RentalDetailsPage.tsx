@@ -27,10 +27,12 @@ type NearbyRental = {
   longitude: number;
 };
 
+/**
+ * Displays full rental details and a map showing the selected rental and nearby rentals.
+ */
 function RentalDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [rental, setRental] = useState<RentalDetails | null>(null);
   const [nearbyRentals, setNearbyRentals] = useState<NearbyRental[]>([]);
 
@@ -68,13 +70,20 @@ function RentalDetailsPage() {
     return <p>Loading...</p>;
   }
 
+  /**
+   * Slightly offsets nearby map markers when they share the same coordinates.
+   * @param latitude - The original latitude.
+   * @param longitude - The original longitude.
+   * @param index - The marker index used to calculate the offset.
+   * @returns The adjusted latitude and longitude.
+   */
   const getOffsetMarker = (
-    lat: number,
-    lng: number,
+    latitude: number,
+    longitude: number,
     index: number
   ): [number, number] => {
     const offset = 0.00015 * (index + 1);
-    return [lat + offset, lng + offset];
+    return [latitude + offset, longitude + offset];
   };
 
   return (
@@ -100,8 +109,8 @@ function RentalDetailsPage() {
             const [lat, lng] =
               item.latitude === rental.latitude &&
               item.longitude === rental.longitude
-                ? getOffsetMarker(item.latitude, item.longitude, index)
-                : [item.latitude, item.longitude];
+              ? getOffsetMarker(item.latitude, item.longitude, index)
+              : [item.latitude, item.longitude];
 
             return (
               <Marker
@@ -129,9 +138,7 @@ function RentalDetailsPage() {
 
       <div className="details-description">
         <strong>Description:</strong>
-        {rental.description.split("<br/>").map((line, index) => (
-          <p key={index}>{line}</p>
-        ))}
+        {rental.description.split("<br/>").map((line, index) => (<p key={index}>{line}</p>))}
       </div>
     </section>
   );

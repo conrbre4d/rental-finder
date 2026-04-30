@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+/**
+ * Displays the login form and handles user authentication.
+ */
 function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-
   const navigate = useNavigate();
 
+  /**
+   * Sends the user's login details to the API and stores the returned token if successful.
+   * @param event - The form submission event.
+   */
   function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -24,7 +30,8 @@ function LoginPage() {
           localStorage.setItem("token", data.token);
           setMessage("Login successful!");
           navigate("/search");
-        } else {
+        } 
+        else {
           setMessage(data.error || data.message || "Login failed.");
         }
       })

@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
 
+/**
+ * Displays the landing page with the main call-to-action for starting a rental search.
+ */
 function HomePage() {
 
   return (

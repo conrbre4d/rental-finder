@@ -7,9 +7,12 @@ import RegisterPage from "./pages/RegisterPage";
 import RatedRentalsPage from "./pages/RatedRentalsPage";
 import RatedRentalsDetailsPage from "./pages/RatedRentalsDetailsPage";
 import AboutPage from "./pages/AboutPage";
-
 import NavBar from "./components/NavigationBar";
 
+
+/**
+ * Defines the main application routes and shared navigation layout.
+ */
 function App() {
   return (
     <BrowserRouter>

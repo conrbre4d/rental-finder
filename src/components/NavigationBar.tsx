@@ -1,9 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 
-function Navbar() {
+/**
+ * Displays the main navigation bar and updates links based on login status.
+ */
+function Navbar(){
   const token = localStorage.getItem("token");
   const navigate = useNavigate();
 
+  /**
+   * Handles the logout functionality by removing the token from local storage and navigating to the home page.
+   */
   function handleLogout() {
     localStorage.removeItem("token");
     navigate("/"); // go home after logout

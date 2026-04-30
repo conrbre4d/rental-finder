@@ -1,3 +1,7 @@
+
+/**
+ * Displays information about the purpose and features of the rental application.
+ */
 function AboutPage() {
   return (
     <section className="about-page">

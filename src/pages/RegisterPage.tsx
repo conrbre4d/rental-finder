@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+/**
+ * Displays the registration form and creates a new user account.
+ */
 function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
+  /**
+   * Sends the user's registration details to the API.
+   * @param event - The form submission event.
+   */
   function handleRegister(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 

@@ -25,14 +25,20 @@ type RatedRental = {
   rental: Rental;
 };
 
+/**
+ * Displays all rental properties that the logged-in user has rated.
+ */
 function RatedRentalsPage() {
   const [ratedRentals, setRatedRentals] = useState<RatedRental[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-
   const token = localStorage.getItem("token");
 
   useEffect(() => {
+
+    /**
+     * Loads the user's ratings and combines each rating with its matching rental details.
+     */
     async function loadRatedRentals() {
       if (!token) {
         setLoading(false);

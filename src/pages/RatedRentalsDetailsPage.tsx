@@ -32,14 +32,15 @@ type Rating = {
   dateTime: string;
 };
 
+/**
+ * Displays the details of a rated rental and allows the user to update their rating.
+ */
 function RatedRentalsDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-
   const [rental, setRental] = useState<RentalDetails | null>(null);
   const [nearbyRentals, setNearbyRentals] = useState<NearbyRental[]>([]);
-
   const [rating, setRating] = useState<Rating | null>(null);
   const [showRating, setShowRating] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -87,13 +88,15 @@ function RatedRentalsDetailsPage() {
       })
       .then((data) => {
         if (!data) return;
-
         setRating(data);
         setSelectedRating(data.rating);
       })
       .catch((error) => console.error("Error fetching rating:", error));
   }, [id, token]);
 
+  /**
+   * Submits a new or updated rating for the current rental property.
+   */
   async function submitRating() {
     if (!token || !id) {
       setRatingMessage("Please log in first.");
@@ -131,9 +134,7 @@ function RatedRentalsDetailsPage() {
       setRating(data);
       setSelectedRating(data.rating);
       setShowRating(false);
-      setRatingMessage(
-        hadExistingRating ? "Rating has been changed!" : "Thank you for rating!"
-      );
+      setRatingMessage(hadExistingRating ? "Rating has been changed!" : "Thank you for rating!");
     } catch (error) {
       console.error(error);
       setRatingMessage("Failed to submit rating.");
@@ -144,13 +145,20 @@ function RatedRentalsDetailsPage() {
     return <p>Loading...</p>;
   }
 
+  /**
+   * Slightly offsets nearby map markers when they share the same coordinates.
+   * @param latitude - The original latitude.
+   * @param logitude - The original longitude.
+   * @param index - The marker index used to calculate the offset.
+   * @returns The adjusted latitude and longitude.
+   */
   const getOffsetMarker = (
-    lat: number,
-    lng: number,
+    latitude: number,
+    logitude: number,
     index: number
   ): [number, number] => {
     const offset = 0.00015 * (index + 1);
-    return [lat + offset, lng + offset];
+    return [latitude + offset, logitude + offset];
   };
 
   return (
@@ -161,32 +169,20 @@ function RatedRentalsDetailsPage() {
         <div className="rating-box">
           <h2 style={{ color: "#122248" }}>Your Rating:</h2>
 
-          {ratingMessage && (
-            <p style={{ textAlign: "center" }}>{ratingMessage}</p>
-          )}
+          {ratingMessage && (<p style={{ textAlign: "center" }}>{ratingMessage}</p>)}
 
           {rating && !showRating && (
             <div className="rating-center">
               <div className="rating-star-row">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span
-                    key={star}
-                    style={{
-                      color: star <= rating.rating ? "#f5b301" : "#ccc",
-                    }}
-                  >
+                {[1, 2, 3, 4, 5].map((star) => (// Display the current rating as stars
+                  <span key={star} style={{color: star <= rating.rating ? "#f5b301" : "#ccc",}}>
                     ★
-                  </span>
-                ))}
+                  </span>))}
               </div>
 
               <button
                 className="btn-filled"
-                onClick={() => {
-                  setShowRating(true);
-                  setRatingMessage("Please select a new rating.");
-                }}
-              >
+                onClick={() => {setShowRating(true); setRatingMessage("Please select a new rating.");}}>
                 Update Rating
               </button>
             </div>
@@ -195,14 +191,8 @@ function RatedRentalsDetailsPage() {
           {showRating && (
             <div className="rating-center">
               <div className="rating-star-row">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span
-                    key={star}
-                    onClick={() => setSelectedRating(star)}
-                    style={{
-                      color: star <= selectedRating ? "#f5b301" : "#ccc",
-                    }}
-                  >
+                {[1, 2, 3, 4, 5].map((star) => (// Clickable stars for selecting a rating
+                  <span key={star} onClick={() => setSelectedRating(star)} style={{color: star <= selectedRating ? "#f5b301" : "#ccc",}}>
                     ★
                   </span>
                 ))}
@@ -216,13 +206,7 @@ function RatedRentalsDetailsPage() {
 
           {!rating && !showRating && (
             <div className="rating-center">
-              <button
-                className="btn-filled"
-                onClick={() => {
-                  setShowRating(true);
-                  setRatingMessage("You can now add a rating.");
-                }}
-              >
+              <button className="btn-filled" onClick={() => { setShowRating(true); setRatingMessage("You can now add a rating.");}}>
                 Rate this property
               </button>
             </div>
