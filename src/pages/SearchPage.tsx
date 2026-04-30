@@ -334,7 +334,11 @@ function SearchPage() {
             <option value="title">Title A-Z</option>
           </select>
 
-          <button type="button" className="reset-button" onClick={resetFilters}>
+          <button
+            type="button"
+            className="reset-button"
+            onClick={resetFilters}
+          >
             Reset Filters
           </button>
         </div>
@@ -433,10 +437,10 @@ function SearchPage() {
                     <button
                       className="btn-filled"
                       onClick={() =>
-                        setUserRatings({
-                          ...userRatings,
+                        setUserRatings((prev) => ({
+                          ...prev,
                           [rental.id]: 0,
-                        })
+                        }))
                       }
                     >
                       Rate

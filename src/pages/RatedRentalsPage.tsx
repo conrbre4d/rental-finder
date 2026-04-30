@@ -123,7 +123,6 @@ function RatedRentalsPage() {
             <div className="rental-card">
               <h3>{item.rental.title}</h3>
 
-              {/* ⭐ Stars (left aligned now) */}
               <div
                 style={{
                   fontSize: "20px",

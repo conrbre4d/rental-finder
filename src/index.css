@@ -629,3 +629,78 @@ body {
   cursor: pointer;
   line-height: 1;
 }
+
+
+/* Global Button Transition Styles */
+button {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+/* Filled Button (Rate, Submit, Update) */
+.btn-filled {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background-color: #122248;
+  color: white;
+  font-weight: 600;
+}
+
+.btn-filled:hover {
+  background-color: #0d1a36;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Outline Button (View) */
+.btn-outline {
+  padding: 10px 18px;
+  border: 1px solid #122248;
+  border-radius: 8px;
+  background-color: white;
+  color: #122248;
+  font-weight: 600;
+}
+
+.btn-outline:hover {
+  background-color: #122248;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Advance Search */
+.advanced-button:hover {
+  background-color: #122248;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Reset Button */
+.reset-button:hover {
+  background-color: #eee;
+  transform: translateY(-1px);
+}
+
+/* Hero Button */
+.hero-button {
+  display: inline-block;
+  padding: 14px 28px;
+  background-color: #122248;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 6px;
+  margin-top: 50px;
+  transition: all 0.2s ease;
+}
+
+.hero-button:hover {
+  background-color: #0d1a36;
+  transform: translateY(-2px);
+}
+
+/* Click Effect */
+button:active {
+  transform: scale(0.97);
+}
