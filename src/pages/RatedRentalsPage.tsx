@@ -25,20 +25,33 @@ type RatedRental = {
   rental: Rental;
 };
 
+type Pagination = {
+  currentPage: number;
+  total: number;
+  lastPage: number;
+  nextPage: number | null;
+};
+
 /**
  * Displays all rental properties that the logged-in user has rated.
  */
 function RatedRentalsPage() {
   const [ratedRentals, setRatedRentals] = useState<RatedRental[]>([]);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+
+  const [sortBy, setSortBy] = useState("");
+  const [selectedPropertyType, setSelectedPropertyType] = useState("");
+
   const token = localStorage.getItem("token");
 
+  /**
+   * Loads the user's ratings and combines each rating with its matching rental details.
+   */
   useEffect(() => {
-
-    /**
-     * Loads the user's ratings and combines each rating with its matching rental details.
-     */
     async function loadRatedRentals() {
       if (!token) {
         setLoading(false);
@@ -50,7 +63,7 @@ function RatedRentalsPage() {
         setMessage("");
 
         const ratingsRes = await fetch(
-          "http://4.237.58.241:3000/ratings?page=1",
+          `http://4.237.58.241:3000/ratings?page=${page}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -63,10 +76,11 @@ function RatedRentalsPage() {
         }
 
         const ratingsData = await ratingsRes.json();
-        const ratings: Rating[] = ratingsData.data;
+        const ratings: Rating[] = ratingsData.data || [];
 
-        if (!ratings || ratings.length === 0) {
-          setRatedRentals([]);
+        setPagination(ratingsData.pagination || null);
+
+        if (ratings.length === 0) {
           return;
         }
 
@@ -95,7 +109,9 @@ function RatedRentalsPage() {
           })
         );
 
-        setRatedRentals(combinedData);
+        setRatedRentals((prev) =>
+          page === 1 ? combinedData : [...prev, ...combinedData]
+        );
       } catch (error) {
         console.error(error);
         setMessage("Failed to load rated rentals.");
@@ -105,25 +121,127 @@ function RatedRentalsPage() {
     }
 
     loadRatedRentals();
-  }, [token]);
+  }, [token, page]);
+
+  /**
+   * Automatically loads the next ratings page when the user scrolls near the bottom.
+   */
+  useEffect(() => {
+    function handleScroll() {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
+
+      if (nearBottom && !loading && pagination?.nextPage) {
+        setPage((prev) => prev + 1);
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, pagination]);
+
+  const propertyTypes = Array.from(
+    new Set(ratedRentals.map((item) => item.rental.propertyType))
+  );
+
+  const filteredAndSortedRatedRentals = [...ratedRentals]
+    .filter((item) =>
+      selectedPropertyType
+        ? item.rental.propertyType === selectedPropertyType
+        : true
+    )
+    .sort((a, b) => {
+      if (sortBy === "rating-high") {
+        return b.rating.rating - a.rating.rating;
+      }
+
+      if (sortBy === "rating-low") {
+        return a.rating.rating - b.rating.rating;
+      }
+
+      if (sortBy === "newest") {
+        return (
+          new Date(b.rating.dateTime).getTime() -
+          new Date(a.rating.dateTime).getTime()
+        );
+      }
+
+      if (sortBy === "oldest") {
+        return (
+          new Date(a.rating.dateTime).getTime() -
+          new Date(b.rating.dateTime).getTime()
+        );
+      }
+
+      if (sortBy === "rent-low") {
+        return a.rental.rent - b.rental.rent;
+      }
+
+      if (sortBy === "rent-high") {
+        return b.rental.rent - a.rental.rent;
+      }
+
+      return 0;
+    });
 
   return (
     <section className="search-page">
       <h1>Rated Rentals</h1>
 
       {!token && <p>Please log in to view your rated rentals.</p>}
-      {loading && token && <p>Loading rated rentals...</p>}
+
       {message && <p>{message}</p>}
+
+      {token && (
+        <div className="filter-bar">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="">Sort rated rentals</option>
+            <option value="rating-high">Highest rating</option>
+            <option value="rating-low">Lowest rating</option>
+            <option value="newest">Newest rated</option>
+            <option value="oldest">Oldest rated</option>
+            <option value="rent-low">Rent: Low to High</option>
+            <option value="rent-high">Rent: High to Low</option>
+          </select>
+
+          <select
+            value={selectedPropertyType}
+            onChange={(e) => setSelectedPropertyType(e.target.value)}
+          >
+            <option value="">All Property Types</option>
+            {propertyTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            className="reset-button"
+            onClick={() => {
+              setSortBy("");
+              setSelectedPropertyType("");
+            }}
+          >
+            Reset Filters
+          </button>
+        </div>
+      )}
 
       {!loading && token && ratedRentals.length === 0 && !message && (
         <p>You have not rated any rentals yet.</p>
       )}
 
       <div className="rental-list">
-        {ratedRentals.map((item) => (
+        {filteredAndSortedRatedRentals.map((item) => (
           <Link
             to={`/rated/${item.rating.rentalId}`}
-            key={item.rental.id}
+            key={`${item.rating.rentalId}-${item.rating.dateTime}`}
             className="rental-link"
           >
             <div className="rental-card">
@@ -176,6 +294,23 @@ function RatedRentalsPage() {
           </Link>
         ))}
       </div>
+
+      {loading && token && <p className="results-count">Loading rated rentals...</p>}
+
+      {!loading &&
+        token &&
+        ratedRentals.length > 0 &&
+        filteredAndSortedRatedRentals.length === 0 && (
+          <p className="results-count">
+            No rated rentals match this property type.
+          </p>
+        )}
+
+      {!loading && token && ratedRentals.length > 0 && !pagination?.nextPage && (
+        <p className="results-count">
+          You have reached the end of your rated rentals.
+        </p>
+      )}
     </section>
   );
 }

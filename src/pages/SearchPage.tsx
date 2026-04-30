@@ -25,39 +25,55 @@ type Pagination = {
   nextPage: number | null;
 };
 
-
 /**
- * Cleans rental titles by removing unwanted "?" characters from the API.
- * This fixes encoding/display issues in the UI.
+ * Cleans rental titles by removing broken emoji/question mark characters from the API.
  *
  * @param title - The original rental title from the API
- * @returns The cleaned title without unwanted characters
+ * @returns The cleaned title
  */
 function cleanTitle(title: string) {
-  return title.replace(/\?\s*/g, "");
+  return title
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+    .replace(/\?\uFE0F?/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
- * Displays rental listings with filters, pagination, nearby rental previews, and rating actions.
+ * Displays rental listings with filters, pagination, infinite scroll, nearby rental previews, and rating actions.
  */
 function SearchPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [states, setStates] = useState<string[]>([]);
   const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
+
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
+
+  const [suburb, setSuburb] = useState("");
   const [postcode, setPostcode] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedPropertyType, setSelectedPropertyType] = useState("");
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [minRent, setMinRent] = useState("");
   const [maxRent, setMaxRent] = useState("");
   const [minBedrooms, setMinBedrooms] = useState("");
+  const [maxBedrooms, setMaxBedrooms] = useState("");
   const [minBathrooms, setMinBathrooms] = useState("");
+  const [maxBathrooms, setMaxBathrooms] = useState("");
   const [minParking, setMinParking] = useState("");
+  const [maxParking, setMaxParking] = useState("");
+  const [minRating, setMinRating] = useState("");
+  const [maxRating, setMaxRating] = useState("");
   const [sortBy, setSortBy] = useState("");
+
   const [page, setPage] = useState(1);
+  const [infiniteScroll, setInfiniteScroll] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const token = localStorage.getItem("token");
+
   const [userRatings, setUserRatings] = useState<Record<number, number>>({});
   const [ratedMessage, setRatedMessage] = useState<Record<number, boolean>>({});
 
@@ -73,17 +89,24 @@ function SearchPage() {
    * Clears all search filters and returns the rental list to the first page.
    */
   function resetFilters() {
+    setSuburb("");
     setPostcode("");
     setSelectedState("");
     setSelectedPropertyType("");
     setMinRent("");
     setMaxRent("");
     setMinBedrooms("");
+    setMaxBedrooms("");
     setMinBathrooms("");
+    setMaxBathrooms("");
     setMinParking("");
+    setMaxParking("");
+    setMinRating("");
+    setMaxRating("");
     setSortBy("");
     setSelectedRental(null);
     setPage(1);
+    setRentals([]);
   }
 
   useEffect(() => {
@@ -97,61 +120,129 @@ function SearchPage() {
   }, []);
 
   useEffect(() => {
-
     /**
      * Fetches rentals from the API using the selected filters, sorting option, and page number.
      */
     async function fetchRentals() {
-      const params = new URLSearchParams();
+      try {
+        setLoading(true);
 
-      params.append("page", String(page));
+        const params = new URLSearchParams();
 
-      if (postcode) params.append("postcode", postcode);
-      if (selectedState) params.append("state", selectedState);
-      if (selectedPropertyType) {params.append("propertyTypes", selectedPropertyType);}
-      if (minRent) params.append("minimumRent", minRent);
-      if (maxRent) params.append("maximumRent", maxRent);
-      if (minBedrooms) params.append("minimumBedrooms", minBedrooms);
-      if (minBathrooms) params.append("minimumBathrooms", minBathrooms);
-      if (minParking) params.append("minimumParking", minParking);
-      if (sortBy === "rent-low") {params.append("sortBy", "rent"); params.append("sortOrder", "asc");}
-      if (sortBy === "rent-high") {params.append("sortBy", "rent"); params.append("sortOrder", "desc");}
-      if (sortBy === "title") {params.append("sortBy", "title"); params.append("sortOrder", "asc");}
+        params.append("page", String(page));
 
-      const res = await fetch(`http://4.237.58.241:3000/rentals/search?${params.toString()}`);
-      const data = await res.json();
+        if (suburb) params.append("suburb", suburb);
+        if (postcode) params.append("postcode", postcode);
+        if (selectedState) params.append("state", selectedState);
+        if (selectedPropertyType) {
+          params.append("propertyTypes", selectedPropertyType);
+        }
 
-      if (data.error) {
+        if (minRent) params.append("minimumRent", minRent);
+        if (maxRent) params.append("maximumRent", maxRent);
+
+        if (minBedrooms) params.append("minimumBedrooms", minBedrooms);
+        if (maxBedrooms) params.append("maximumBedrooms", maxBedrooms);
+
+        if (minBathrooms) params.append("minimumBathrooms", minBathrooms);
+        if (maxBathrooms) params.append("maximumBathrooms", maxBathrooms);
+
+        if (minParking) params.append("minimumParking", minParking);
+        if (maxParking) params.append("maximumParking", maxParking);
+
+        if (minRating) params.append("minimumRating", minRating);
+        if (maxRating) params.append("maximumRating", maxRating);
+
+        if (sortBy === "rent-low") {
+          params.append("sortBy", "rent");
+          params.append("sortOrder", "asc");
+        }
+
+        if (sortBy === "rent-high") {
+          params.append("sortBy", "rent");
+          params.append("sortOrder", "desc");
+        }
+
+        if (sortBy === "title") {
+          params.append("sortBy", "title");
+          params.append("sortOrder", "asc");
+        }
+
+        const res = await fetch(
+          `http://4.237.58.241:3000/rentals/search?${params.toString()}`
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          setRentals([]);
+          setPagination(null);
+          return;
+        }
+
+        const newRentals = data.rentals || data.data || data.results || [];
+
+        setRentals((prev) =>
+          infiniteScroll && page > 1 ? [...prev, ...newRentals] : newRentals
+        );
+
+        setPagination(data.pagination || null);
+        setSelectedRental(null);
+      } catch (error) {
+        console.error(error);
         setRentals([]);
         setPagination(null);
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      setRentals(data.rentals || data.data || data.results || []);
-      setPagination(data.pagination || null);
-      setSelectedRental(null);
     }
 
     fetchRentals();
   }, [
     page,
+    infiniteScroll,
+    suburb,
     postcode,
     selectedState,
     selectedPropertyType,
     minRent,
     maxRent,
     minBedrooms,
+    maxBedrooms,
     minBathrooms,
+    maxBathrooms,
     minParking,
+    maxParking,
+    minRating,
+    maxRating,
     sortBy,
   ]);
 
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }, [page]);
+    if (!infiniteScroll) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [page, infiniteScroll]);
+
+  useEffect(() => {
+    if (!infiniteScroll) return;
+
+    function handleScroll() {
+      const nearBottom =
+        window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
+
+      if (nearBottom && !loading && pagination?.nextPage) {
+        setPage((prev) => prev + 1);
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [infiniteScroll, loading, pagination]);
 
   const nearbyRentals = selectedRental
     ? rentals.filter(
@@ -195,7 +286,7 @@ function SearchPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {   
+      if (!res.ok) {
         alert(data.message || "Failed to submit rating.");
         return;
       }
@@ -215,6 +306,17 @@ function SearchPage() {
       <h1>Rental Search</h1>
 
       <div className="filter-bar">
+        <input
+          className="filter-input"
+          type="text"
+          placeholder="Suburb"
+          value={suburb}
+          onChange={(e) => {
+            setSuburb(e.target.value);
+            resetPage();
+          }}
+        />
+
         <input
           className="filter-input"
           type="text"
@@ -303,6 +405,17 @@ function SearchPage() {
           <input
             type="number"
             min="0"
+            placeholder="Max bedrooms"
+            value={maxBedrooms}
+            onChange={(e) => {
+              setMaxBedrooms(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
             placeholder="Min bathrooms"
             value={minBathrooms}
             onChange={(e) => {
@@ -314,10 +427,58 @@ function SearchPage() {
           <input
             type="number"
             min="0"
+            placeholder="Max bathrooms"
+            value={maxBathrooms}
+            onChange={(e) => {
+              setMaxBathrooms(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
             placeholder="Min parking"
             value={minParking}
             onChange={(e) => {
               setMinParking(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            placeholder="Max parking"
+            value={maxParking}
+            onChange={(e) => {
+              setMaxParking(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.5"
+            placeholder="Min rating"
+            value={minRating}
+            onChange={(e) => {
+              setMinRating(e.target.value);
+              resetPage();
+            }}
+          />
+
+          <input
+            type="number"
+            min="0"
+            max="5"
+            step="0.5"
+            placeholder="Max rating"
+            value={maxRating}
+            onChange={(e) => {
+              setMaxRating(e.target.value);
               resetPage();
             }}
           />
@@ -335,21 +496,46 @@ function SearchPage() {
             <option value="title">Title A-Z</option>
           </select>
 
-          <button
-            type="button"
-            className="reset-button"
-            onClick={resetFilters}
-          >
+          <button type="button" className="reset-button" onClick={resetFilters}>
             Reset Filters
           </button>
         </div>
       )}
 
-      <p className="results-count">
-        Showing {pagination ? pagination.from + 1 : 0}–
-        {pagination ? pagination.to : 0} of{" "}
-        {pagination ? pagination.total : 0} results
-      </p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "20px",
+          flexWrap: "wrap",
+        }}
+      >
+        <p className="results-count" style={{ marginBottom: 0 }}>
+          {infiniteScroll
+            ? `Loaded ${rentals.length} of ${
+                pagination ? pagination.total : 0
+              } results`
+            : `Showing ${pagination ? pagination.from + 1 : 0}–${
+                pagination ? pagination.to : 0
+              } of ${pagination ? pagination.total : 0} results`}
+        </p>
+
+        <button
+          type="button"
+          className="btn-filled"
+          onClick={() => {
+            setInfiniteScroll((prev) => !prev);
+            setPage(1);
+            setRentals([]);
+            setSelectedRental(null);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          {infiniteScroll ? "Switch to Pagination" : "Switch to Infinite Scroll"}
+        </button>
+      </div>
 
       <div className="rental-list">
         {rentals.map((rental) => (
@@ -360,19 +546,24 @@ function SearchPage() {
           >
             <Link to={`/rentals/${rental.id}`} className="rental-link">
               <h3>{cleanTitle(rental.title)}</h3>
+
               <p>
                 <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
                 {rental.postcode}
               </p>
+
               <p>
                 <strong>Bedrooms:</strong> {rental.bedrooms}
               </p>
+
               <p>
                 <strong>Bathrooms:</strong> {rental.bathrooms}
               </p>
+
               <p>
                 <strong>Parking:</strong> {rental.parkingSpaces}
               </p>
+
               <p>
                 <strong>Rent:</strong> ${rental.rent}
               </p>
@@ -393,46 +584,43 @@ function SearchPage() {
                 {ratedMessage[rental.id] ? (
                   <p>Thank you for rating!</p>
                 ) : userRatings[rental.id] !== undefined ? (
-                  <>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "10px",
-                      }}
-                    >
-                      <div style={{ fontSize: "28px", cursor: "pointer" }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <span
-                            key={star}
-                            onClick={() =>
-                              setUserRatings((prev) => ({
-                                ...prev,
-                                [rental.id]: star,
-                              }))
-                            }
-                            style={{
-                              color:
-                                star <= (userRatings[rental.id] || 0)
-                                  ? "#f5b301"
-                                  : "#ccc",
-                            }}
-                          >
-                            ★
-                          </span>
-                        ))}
-                      </div>
-
-                      <button
-                        className="btn-filled"
-                        onClick={() => submitRating(rental.id)}
-                      >
-                        Submit
-                      </button>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ fontSize: "28px", cursor: "pointer" }}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          onClick={() =>
+                            setUserRatings((prev) => ({
+                              ...prev,
+                              [rental.id]: star,
+                            }))
+                          }
+                          style={{
+                            color:
+                              star <= (userRatings[rental.id] || 0)
+                                ? "#f5b301"
+                                : "#ccc",
+                          }}
+                        >
+                          ★
+                        </span>
+                      ))}
                     </div>
 
-                  </>
+                    <button
+                      className="btn-filled"
+                      onClick={() => submitRating(rental.id)}
+                    >
+                      Submit
+                    </button>
+                  </div>
                 ) : (
                   token && (
                     <button
@@ -454,6 +642,23 @@ function SearchPage() {
         ))}
       </div>
 
+      {loading && <p className="results-count">Loading rentals...</p>}
+
+      {!loading && rentals.length === 0 && (
+        <p className="results-count">
+          No rentals found. Try changing your filters.
+        </p>
+      )}
+
+      {infiniteScroll &&
+        !loading &&
+        !pagination?.nextPage &&
+        rentals.length > 0 && (
+          <p className="results-count">
+            You have reached the end of the results.
+          </p>
+        )}
+
       {selectedRental && (
         <div className="nearby-rentals">
           <h2>Nearby rentals in {selectedRental.postcode}</h2>
@@ -469,10 +674,12 @@ function SearchPage() {
               >
                 <div className="rental-card">
                   <h3>{cleanTitle(rental.title)}</h3>
+
                   <p>
                     <strong>Location:</strong> {rental.suburb}, {rental.state}{" "}
                     {rental.postcode}
                   </p>
+
                   <p>
                     <strong>Rent:</strong> ${rental.rent}
                   </p>
@@ -483,25 +690,37 @@ function SearchPage() {
         </div>
       )}
 
-      <div className="pagination">
-        <button
-          disabled={!pagination?.prevPage}
-          onClick={() => setPage(page - 1)}
-        >
-          Previous
-        </button>
+      {!infiniteScroll && (
+        <div className="pagination">
+          <button
+            disabled={!pagination?.prevPage}
+            onClick={() => {
+              setPage(page - 1);
+              setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }, 50);
+            }}
+          >
+            Previous
+          </button>
+          
 
-        <span>
-          Page {pagination?.currentPage || page} of {pagination?.lastPage || 1}
-        </span>
+          <span>
+            Page {pagination?.currentPage || page} of{" "}
+            {pagination?.lastPage || 1}
+          </span>
 
-        <button
-          disabled={!pagination?.nextPage}
-          onClick={() => setPage(page + 1)}
-        >
-          Next
-        </button>
-      </div>
+          <button
+            disabled={!pagination?.nextPage}
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              setPage(page + 1);
+            }}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </section>
   );
 }
