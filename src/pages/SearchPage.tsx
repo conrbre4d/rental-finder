@@ -121,7 +121,6 @@ function SearchPage() {
       const data = await res.json();
 
       if (data.error) {
-        console.log(data.message);
         setRentals([]);
         setPagination(null);
         return;
@@ -152,8 +151,6 @@ function SearchPage() {
       behavior: "smooth",
     });
   }, [page]);
-
-  const displayedRentals = rentals;
 
   const nearbyRentals = selectedRental
     ? rentals.filter(
@@ -193,8 +190,7 @@ function SearchPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        console.log(data);
+      if (!res.ok) {   
         alert(data.message || "Failed to submit rating.");
         return;
       }
@@ -351,7 +347,7 @@ function SearchPage() {
       </p>
 
       <div className="rental-list">
-        {displayedRentals.map((rental) => (
+        {rentals.map((rental) => (
           <div
             key={rental.id}
             className="rental-card"
