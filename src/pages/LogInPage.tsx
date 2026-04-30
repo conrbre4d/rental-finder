@@ -20,8 +20,6 @@ function LoginPage() {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("Login response:", data);
-
         if (data.token) {
           localStorage.setItem("token", data.token);
           setMessage("Login successful!");

@@ -32,7 +32,7 @@ type Rating = {
   dateTime: string;
 };
 
-function RentalDetailsPage() {
+function RatedRentalsDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
@@ -162,10 +162,8 @@ function RentalDetailsPage() {
           <h2 style={{ color: "#122248" }}>Your Rating:</h2>
 
           {ratingMessage && (
-            <p style={{ textAlign: "center" }}>
-                {ratingMessage}
-            </p>
-            )}
+            <p style={{ textAlign: "center" }}>{ratingMessage}</p>
+          )}
 
           {rating && !showRating && (
             <div className="rating-center">
@@ -222,7 +220,7 @@ function RentalDetailsPage() {
                 className="btn-filled"
                 onClick={() => {
                   setShowRating(true);
-                  setRatingMessage("You can now add a rating");
+                  setRatingMessage("You can now add a rating.");
                 }}
               >
                 Rate this property
@@ -294,13 +292,13 @@ function RentalDetailsPage() {
       <div className="details-description">
         <h2>Description</h2>
         <p
-            dangerouslySetInnerHTML={{
+          dangerouslySetInnerHTML={{
             __html: rental.description,
-            }}
+          }}
         />
-        </div>
+      </div>
     </section>
   );
 }
 
-export default RentalDetailsPage;
+export default RatedRentalsDetailsPage;

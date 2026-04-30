@@ -18,8 +18,6 @@ function RegisterPage() {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log("Register response:", data);
-
         if (data.error || data.message?.includes("already")) {
           setMessage(data.error || data.message);
         } else {
